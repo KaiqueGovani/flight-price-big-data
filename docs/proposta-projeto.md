@@ -15,8 +15,6 @@
 |---|------|-----|
 | 1 | Kaique Medeiros Govani | 210170 |
 | 2 | Felipe Augusto Almeida Mariano | 210045 |
-| 3 | _[Nome do Integrante 3]_ | _[RA]_ |
-| 4 | _[Nome do Integrante 4]_ | _[RA]_ |
 
 ---
 

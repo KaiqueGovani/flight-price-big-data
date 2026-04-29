@@ -1,0 +1,122 @@
+# Big Data environment for flight price prediction
+# Usage: docker compose up -d
+# UIs: NameNode http://localhost:9870 | Spark http://localhost:8080 | Jupyter http://localhost:8888 (token: bigdata2026)
+
+services:
+  # --- HDFS NameNode: manages filesystem metadata ---
+  namenode:
+    image: apache/hadoop:3.5.0
+    hostname: namenode
+    container_name: namenode
+    command: hdfs namenode
+    ports:
+      - "9870:9870"   # Web UI
+      - "9000:9000"   # HDFS RPC
+    environment:
+      ENSURE_NAMENODE_DIR: /tmp/hadoop-root/dfs/name
+      HADOOP_HOME: /opt/hadoop
+      CORE-SITE.XML_fs.defaultFS: hdfs://namenode:9000
+      HDFS-SITE.XML_dfs.replication: "1"
+    volumes:
+      - namenode-data:/tmp/hadoop-root/dfs/name
+      - ./scripts:/scripts
+      - ./data:/data
+    networks:
+      - bigdata-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "hdfs dfsadmin -safemode get 2>/dev/null | grep -q OFF"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # --- HDFS DataNode: stores actual data blocks ---
+  datanode:
+    image: apache/hadoop:3.5.0
+    hostname: datanode
+    container_name: datanode
+    command: hdfs datanode
+    environment:
+      HADOOP_HOME: /opt/hadoop
+      CORE-SITE.XML_fs.defaultFS: hdfs://namenode:9000
+      HDFS-SITE.XML_dfs.replication: "1"
+    volumes:
+      - datanode-data:/tmp/hadoop-root/dfs/data
+    networks:
+      - bigdata-net
+    restart: unless-stopped
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  # --- Spark Master: cluster manager ---
+  spark-master:
+    image: spark:3.5.3-scala2.12-java17-python3-ubuntu
+    hostname: spark-master
+    container_name: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    ports:
+      - "8080:8080"   # Web UI
+      - "7077:7077"   # Cluster RPC
+    networks:
+      - bigdata-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # --- Spark Worker: executes tasks ---
+  spark-worker:
+    image: spark:3.5.3-scala2.12-java17-python3-ubuntu
+    hostname: spark-worker
+    container_name: spark-worker
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    ports:
+      - "8081:8081"   # Web UI
+    environment:
+      SPARK_WORKER_MEMORY: 4g
+      SPARK_WORKER_CORES: "2"
+    networks:
+      - bigdata-net
+    restart: unless-stopped
+    depends_on:
+      spark-master:
+        condition: service_healthy
+
+  # --- Jupyter: notebook IDE with PySpark support ---
+  jupyter:
+    image: quay.io/jupyter/pyspark-notebook:spark-3.5.3
+    hostname: jupyter
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      JUPYTER_TOKEN: bigdata2026
+      SPARK_MASTER: spark://spark-master:7077
+      SPARK_OPTS: >-
+        --conf spark.driver.host=jupyter
+        --conf spark.driver.memory=4g
+        --conf spark.hadoop.fs.defaultFS=hdfs://namenode:9000
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/data
+    networks:
+      - bigdata-net
+    restart: unless-stopped
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+
+volumes:
+  namenode-data:
+  datanode-data:
+
+networks:
+  bigdata-net:
+    driver: bridge

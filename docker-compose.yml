@@ -8,17 +8,25 @@ services:
     image: apache/hadoop:3.5.0
     hostname: namenode
     container_name: namenode
-    command: hdfs namenode
+    user: "0"
+    command: >
+      bash -lc "
+      mkdir -p /tmp/hadoop-hadoop/dfs/name &&
+      if [ ! -d /tmp/hadoop-hadoop/dfs/name/current ]; then
+        hdfs namenode -format -force -nonInteractive;
+      fi &&
+      exec hdfs namenode
+      "
     ports:
       - "9870:9870"   # Web UI
       - "9000:9000"   # HDFS RPC
     environment:
-      ENSURE_NAMENODE_DIR: /tmp/hadoop-root/dfs/name
       HADOOP_HOME: /opt/hadoop
       CORE-SITE.XML_fs.defaultFS: hdfs://namenode:9000
+      HDFS-SITE.XML_dfs.namenode.name.dir: file:///tmp/hadoop-hadoop/dfs/name
       HDFS-SITE.XML_dfs.replication: "1"
     volumes:
-      - namenode-data:/tmp/hadoop-root/dfs/name
+      - namenode-data:/tmp/hadoop-hadoop/dfs/name
       - ./scripts:/scripts
       - ./data:/data
     networks:
@@ -36,13 +44,19 @@ services:
     image: apache/hadoop:3.5.0
     hostname: datanode
     container_name: datanode
-    command: hdfs datanode
+    user: "0"
+    command: >
+      bash -lc "
+      mkdir -p /tmp/hadoop-hadoop/dfs/data &&
+      exec hdfs datanode
+      "
     environment:
       HADOOP_HOME: /opt/hadoop
       CORE-SITE.XML_fs.defaultFS: hdfs://namenode:9000
+      HDFS-SITE.XML_dfs.datanode.data.dir: file:///tmp/hadoop-hadoop/dfs/data
       HDFS-SITE.XML_dfs.replication: "1"
     volumes:
-      - datanode-data:/tmp/hadoop-root/dfs/data
+      - datanode-data:/tmp/hadoop-hadoop/dfs/data
     networks:
       - bigdata-net
     restart: unless-stopped
@@ -59,6 +73,8 @@ services:
     ports:
       - "8080:8080"   # Web UI
       - "7077:7077"   # Cluster RPC
+    environment:
+      PYSPARK_PYTHON: python3
     networks:
       - bigdata-net
     restart: unless-stopped
@@ -80,6 +96,9 @@ services:
     environment:
       SPARK_WORKER_MEMORY: 4g
       SPARK_WORKER_CORES: "2"
+      PYSPARK_PYTHON: python3
+    volumes:
+      - ./data:/data:ro
     networks:
       - bigdata-net
     restart: unless-stopped
@@ -89,20 +108,35 @@ services:
 
   # --- Jupyter: notebook IDE with PySpark support ---
   jupyter:
-    image: quay.io/jupyter/pyspark-notebook:spark-3.5.3
+    build:
+      context: .
+      dockerfile: docker/jupyter/Dockerfile
+    image: flight-price-jupyter:local
     hostname: jupyter
     container_name: jupyter
+    command: >
+      bash -lc "
+      python3 -m jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --ServerApp.token=$${JUPYTER_TOKEN}
+      --ServerApp.root_dir=/work
+      "
     ports:
       - "8888:8888"
     environment:
       JUPYTER_TOKEN: bigdata2026
       SPARK_MASTER: spark://spark-master:7077
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
       SPARK_OPTS: >-
         --conf spark.driver.host=jupyter
         --conf spark.driver.memory=4g
         --conf spark.hadoop.fs.defaultFS=hdfs://namenode:9000
     volumes:
-      - ./notebooks:/home/jovyan/work
+      - ./notebooks:/work
       - ./data:/data
     networks:
       - bigdata-net

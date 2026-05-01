@@ -243,7 +243,7 @@ Os três modelos serão comparados lado a lado utilizando as mesmas partições 
 | Interface | Jupyter Notebook | Análise interativa e visualizações |
 | Linguagem | Python 3.x | Linguagem principal do projeto |
 | ML Clássico | scikit-learn / Spark MLlib | Regressão Linear e Árvore de Decisão |
-| Deep Learning | TensorFlow/Keras ou PyTorch | Redes Neurais |
+| Deep Learning | Multilayer Perceptron | Redes Neurais |
 | Visualização | Matplotlib / Seaborn | Gráficos e visualizações da EDA |
 | Versionamento | Git / GitHub | Controle de versão do código |
 | Apresentação | Microsoft PowerPoint | Criação dos slides para apresentação final |

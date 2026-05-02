@@ -75,6 +75,9 @@ services:
       - "7077:7077"   # Cluster RPC
     environment:
       PYSPARK_PYTHON: python3
+    volumes:
+      - ./scripts:/scripts
+      - ./data:/data:ro
     networks:
       - bigdata-net
     restart: unless-stopped
@@ -98,6 +101,7 @@ services:
       SPARK_WORKER_CORES: "2"
       PYSPARK_PYTHON: python3
     volumes:
+      - ./scripts:/scripts
       - ./data:/data:ro
     networks:
       - bigdata-net

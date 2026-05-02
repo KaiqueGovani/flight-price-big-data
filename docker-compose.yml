@@ -62,7 +62,7 @@ services:
     restart: unless-stopped
     depends_on:
       namenode:
-        condition: service_healthy
+        condition: service_started
 
   # --- Spark Master: cluster manager ---
   spark-master:

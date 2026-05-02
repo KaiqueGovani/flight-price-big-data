@@ -46,7 +46,33 @@ Kernel > Restart Kernel
 
 e rode as celulas novamente desde o topo. Caso contrario, o Spark pode ficar preso em um caminho antigo do dataset.
 
-## Carregando o dataset no HDFS
+## Preparando o dataset
+
+Fluxo recomendado depois do pull:
+
+1. manter o CSV original em `data/itineraries.csv`
+2. converter para Parquet diretamente no HDFS
+3. usar o notebook lendo Parquet por padrao
+
+Conversao recomendada:
+
+```powershell
+make convert-local
+```
+
+Isso evita o upload manual do CSV para o HDFS e grava:
+
+- `hdfs://namenode:9000/data/itineraries.parquet`
+
+Se quiser validar a saida:
+
+```powershell
+make verify
+```
+
+## Carregando o CSV no HDFS
+
+Esse passo continua disponivel, mas agora e secundario.
 
 Com os containers saudaveis:
 
@@ -54,8 +80,9 @@ Com os containers saudaveis:
 docker compose exec namenode /scripts/upload-to-hdfs.sh
 ```
 
-O notebook tenta ler primeiro de:
+O notebook tenta ler nesta ordem:
 
+- `hdfs://namenode:9000/data/itineraries.parquet`
 - `hdfs://namenode:9000/data/itineraries.csv`
 - fallback: `/data/itineraries.csv`
 

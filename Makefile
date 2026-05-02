@@ -3,6 +3,7 @@
 
 COMPOSE   ?= MSYS_NO_PATHCONV=1 docker compose
 HDFS_DATA ?= /data
+HDFS_USER ?= root
 INPUT_CSV  ?= hdfs://namenode:9000$(HDFS_DATA)/itineraries.csv
 OUTPUT_DIR ?= hdfs://namenode:9000$(HDFS_DATA)/itineraries.parquet
 
@@ -90,7 +91,7 @@ convert:
 	$(COMPOSE) exec \
 	  -e INPUT_CSV=$(INPUT_CSV) \
 	  -e OUTPUT_DIR=$(OUTPUT_DIR) \
-	  -e HADOOP_USER_NAME=hadoop \
+	  -e HADOOP_USER_NAME=$(HDFS_USER) \
 	  spark-master /opt/spark/bin/spark-submit \
 	    --master spark://spark-master:7077 \
 	    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:9000 \
@@ -102,7 +103,7 @@ convert-local:
 	$(COMPOSE) exec \
 	  -e INPUT_CSV=file:///data/itineraries.csv \
 	  -e OUTPUT_DIR=$(OUTPUT_DIR) \
-	  -e HADOOP_USER_NAME=hadoop \
+	  -e HADOOP_USER_NAME=$(HDFS_USER) \
 	  spark-master /opt/spark/bin/spark-submit \
 	    --master spark://spark-master:7077 \
 	    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:9000 \
@@ -113,7 +114,7 @@ convert-local:
 verify:
 	$(COMPOSE) exec \
 	  -e PARQUET_DIR=$(OUTPUT_DIR) \
-	  -e HADOOP_USER_NAME=hadoop \
+	  -e HADOOP_USER_NAME=$(HDFS_USER) \
 	  spark-master /opt/spark/bin/spark-submit \
 	    --master spark://spark-master:7077 \
 	    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:9000 \
